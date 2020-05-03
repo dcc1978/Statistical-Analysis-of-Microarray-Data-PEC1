@@ -1,0 +1,554 @@
+
+```{r setup, include=FALSE}
+library(knitr)
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, 
+                      comment = NA, prompt = TRUE, tidy = FALSE, 
+                      fig.width = 7, fig.height = 7, fig_caption = TRUE,
+                      cache=FALSE)
+Sys.setlocale("LC_TIME", "C")
+```
+
+```{r echo=FALSE}
+if(!(require(printr))) {
+  install.packages(
+    'printr',
+    type = 'source',
+    repos = c('http://yihui.name/xran', 'http://cran.rstudio.com')
+  )
+}
+```
+
+```{r setup, include=FALSE}
+library(knitr)
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, 
+                      comment = NA, prompt = TRUE, tidy = FALSE, 
+                      fig.width = 7, fig.height = 7, fig_caption = TRUE,
+                      cache=FALSE)
+Sys.setlocale("LC_TIME", "C")
+```
+
+```{r echo=FALSE}
+if(!(require(printr))) {
+  install.packages(
+    'printr',
+    type = 'source',
+    repos = c('http://yihui.name/xran', 'http://cran.rstudio.com')
+  )
+}
+```
+
+```{r setup, include=FALSE}
+library(knitr)
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, 
+                      comment = NA, prompt = TRUE, tidy = FALSE, 
+                      fig.width = 7, fig.height = 7, fig_caption = TRUE,
+                      cache=FALSE)
+Sys.setlocale("LC_TIME", "C")
+```
+```{r CreateFolders,warning=FALSE,eval=FALSE}
+setwd(".")
+dir.create("data")
+dir.create("results")
+dir.create("figures")
+```
+```{r ReadTargets,echo=FALSE,fig.width= 3, fig.height=7, fig.align='center'}
+targets <- read.csv2("./data/targets.csv", header = TRUE, sep = ";") 
+knitr::kable(
+  targets,booktabs=TRUE,
+  caption=' Tabla1. Contenido del fichero targets utilizados para el análisis'
+)
+```
+```{r , include=FALSE}
+
+chooseCRANmirror(graphics=FALSE, ind=1)
+install.packages("knitr")
+install.packages("gplots")
+
+if (!requireNamespace("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+
+BiocManager::install("Biobase")
+BiocManager::install("arrayQualityMetrics")
+BiocManager::install("affy")
+BiocManager::install("oligo")
+BiocManager::install("oligoClasses")
+BiocManager::install("pd.mogene.1.0.st.v1")
+BiocManager::install("mogene10sttranscriptcluster.db")
+BiocManager::install("genefilter")
+BiocManager::install("limma")
+BiocManager::install("GEOquery")
+BiocManager::install("annotate")
+BiocManager::install("AnnotationDbi")
+BiocManager::install("org.Mm.eg.db")
+BiocManager::install("ReactomePA")
+BiocManager::install("reactome.db")
+BiocManager::install("affycoretools")
+
+```
+
+```{r, include=FALSE}
+library(knitr)
+library(kableExtra)
+library(Biobase)
+library(arrayQualityMetrics)
+library(affy)
+library(Biobase)
+library(BiocManager)
+library(oligoClasses)
+library(oligo)
+library(pd.mogene.1.0.st.v1)
+library(mogene10sttranscriptcluster.db)
+library(genefilter)
+library(limma)
+library(GEOquery)
+library(annotate)
+library(AnnotationDbi)
+library(gplots)
+library(org.Mm.eg.db)
+library(ReactomePA)
+library(reactome.db)
+```
+```{r ReadCELfiles, echo=FALSE, message=FALSE, results='markup', warning=FALSE}
+require(oligo)
+celFiles <- list.celfiles("./data", full.names = TRUE)
+require(Biobase)
+my.targets <-read.AnnotatedDataFrame(file.path("./data","targets.csv"), 
+                                     header = TRUE, row.names = 1, 
+                                     sep=";") 
+rawData <- read.celfiles(celFiles, phenoData = my.targets)
+```
+
+```{r ChangeName}
+colnames(rawData) <-rownames(pData(rawData)) <- my.targets@data$ShortName
+```
+```{r QCRaw, message=FALSE, warning=FALSE, eval=FALSE}
+require(arrayQualityMetrics)
+arrayQualityMetrics(rawData, outdir = file.path("./results", "QCDir.Raw"), force=TRUE)
+```
+```{r PCAanalysis raw,echo=FALSE, eval=TRUE}
+library(ggplot2)
+library(ggrepel)
+plotPCA3 <- function (datos, labels, factor, title, scale,colores, size = 1.5, glineas = 0.25) {
+  data <- prcomp(t(datos),scale=scale)
+  # plot adjustments
+  dataDf <- data.frame(data$x)
+  Group <- factor
+  loads <- round(data$sdev^2/sum(data$sdev^2)*100,1)
+  # main plot
+  p1 <- ggplot(dataDf,aes(x=PC1, y=PC2)) +
+    theme_classic() +
+    geom_hline(yintercept = 0, color = "gray70") +
+    geom_vline(xintercept = 0, color = "gray70") +
+    geom_point(aes(color = Group), alpha = 0.55, size = 3) +
+    coord_cartesian(xlim = c(min(data$x[,1])-5,max(data$x[,1])+5)) +
+    scale_fill_discrete(name = "Group")
+  # avoiding labels superposition
+  p1 + geom_text_repel(aes(y = PC2 + 0.25, label = labels),segment.size = 0.25, size = size) + 
+    labs(x = c(paste("PC1",loads[1],"%")),y=c(paste("PC2",loads[2],"%"))) +  
+    ggtitle(paste("Principal Component Analysis for: ",title,sep=" "))+ 
+    theme(plot.title = element_text(hjust = 0.5)) +
+    scale_color_manual(values=colores)
+  }
+```
+```{r PCARaw, echo=FALSE,eval=TRUE, fig.align="center", fig.cap="Figura 2.Visualización de los componentes principales de los datos sin procesar"}
+plotPCA3(exprs(rawData), labels = targets$ShortName, factor = targets$Group, 
+         title="Raw data", scale = FALSE, size = 3, 
+         colores = c("red", "blue", "green", "yellow"))
+```
+```{r savePCAraw, echo=FALSE, eval=TRUE, results='hide'}
+tiff("figures/PCA_RawData.tiff", res = 200, width = 4.5, height = 4, units = 'in')
+plotPCA3(exprs(rawData), labels = targets$ShortName, factor = targets$Group, 
+         title="Raw data", scale = FALSE, size = 2, 
+         colores = c("red", "blue", "green", "yellow"))
+dev.off()
+```
+
+```{r BoxplotRaw, message=FALSE,eval=TRUE, echo=FALSE, fig.align="center", fig.cap="Figura 3.Boxplot de los datos sin procesar"}
+boxplot(rawData, cex.axis=0.5, las=2,  which="all", 
+         col = c(rep("red", 3), rep("blue", 3), rep("green", 3), rep("yellow", 3)),
+         main="Distribucion de la intensidad de los raw data")
+```
+
+```{r saveIntensRaw, echo=FALSE, eval=TRUE,results='hide'}
+tiff("figures/Intensity_RawData.tiff", res = 200, width = 4, height = 4, units = 'in')
+boxplot(rawData, cex.axis=0.5, las=2,  which="all", 
+         col = c(rep("red", 3), rep("blue", 3), rep("green", 3), rep("yellow", 3)),
+         main="Distribution de la intensidad de los datos sin procesar")
+dev.off()
+```
+```{r Normalization, include=FALSE}
+eset_rma<-oligo::rma(rawData)
+eset_rma
+write.csv2(exprs(eset_rma), file="./results/normalized.Data.csv")
+```
+```{r QCNorm,message=FALSE,warning=FALSE,evaL=FALSE}
+
+library(arrayQualityMetrics)
+arrayQualityMetrics(eset_rma,outdir=file.path("./results/QCDir.Norm"),force=TRUE)
+
+```
+```{r control de calidad de datos normalizados resultados,eval=TRUE, echo=FALSE, out.width="100%", fig.align="center", fig.cap="Figura4. Resumen de resultados del control de calidad para de los datos normalizados"}
+knitr::include_graphics("figures/figura4.png")
+```
+```{r PCANorm, echo=FALSE,eval=TRUE, fig.align="center", fig.cap="Figura 5.Visualización de los componentes principales de los datos normalizados"}
+plotPCA3(exprs(eset_rma), label = targets$ShortName, factor = targets$Group, 
+         title="Datos normalizados", scale = FALSE, size = 2 , 
+         colores = c("red", "blue","green","yellow"))
+```
+```{r BoxplotNorm, message=FALSE, fig.align="center", echo=FALSE, fig.cap="Figura 6. Boxplot de los datos normalizados"}
+
+boxplotnormalizado <- boxplot(eset_rma, cex.axis=0.5, las=2,  which="all", 
+         col = c(rep("red",3), rep("blue",3), rep("green",3), rep("yellow",3)),
+         main="Boxplot for arrays intensity: Normalized Data")
+```
+```{r control de calidad de datos MAplot raw, echo=FALSE, out.width="100%", fig.align="center", fig.cap="Figura 7.MA plot de los datos sin procesar"}
+knitr::include_graphics("figures/maraw.png")
+```
+
+```{r control de calidad de datos MAnorm, echo=FALSE, out.width="100%", fig.align="center", fig.cap="Figura 8.MA plot de los datos normalizados"}
+knitr::include_graphics("figures/manorm.png")
+```
+
+```{r BatchDetection, message=FALSE, warning=FALSE, echo=FALSE}
+#load the library
+require(pvca)
+pData(eset_rma) <- targets
+#select the threshold
+pct_threshold <- 0.6
+#select the factors to analyze
+batch.factors <- c("Treatment", "Group")
+#run the analysis
+pvcaObj<-pvcaBatchAssess(eset_rma,batch.factors,pct_threshold)
+```
+
+```{r, echo=FALSE, fig.align="center", fig.cap="Figura 9.Estimación PVCA"}
+bp <- barplot(pvcaObj$dat, xlab = "Efectos",
+ ylab = "Variación de la proporción media ponderada",
+ ylim= c(0,1.1),col = c("mediumorchid"), las=2,
+ main="Estimación PVCA")
+axis(1, at = bp, labels = pvcaObj$label, cex.axis = 0.75, las=2)
+values = pvcaObj$dat
+new_values = round(values , 3)
+text(bp,pvcaObj$dat,labels = new_values, pos=3, cex = 0.7)
+```
+```{r SDplot,echo=FALSE, fig.align="center", fig.cap="Figura 10. Valores de las desviaciones estándar de las muestras de los genes ordenados de menor a mayor"}
+sds <- apply (exprs(eset_rma), 1, sd)
+sdsO<- sort(sds)
+plot(1:length(sdsO), sdsO, main="Distribución de la variabilidad de todos los genes",
+     sub="Las lineas verticales representan los percentiles 90% y 95%",
+     xlab="Índice de genes (del menor al mayor variable)", ylab="Desviación estándar")
+abline(v=length(sds)*c(0.9,0.95))
+```
+```{r Filtering1, results='hide', message=FALSE,echo=FALSE}
+require(genefilter)
+require(mogene10sttranscriptcluster.db)
+annotation(eset_rma) <- "mogene10sttranscriptcluster.db"
+filtered <- nsFilter(eset_rma, 
+                     require.entrez = TRUE, remove.dupEntrez = TRUE,
+                     var.filter=TRUE, var.func=IQR, var.cutoff=0.75, 
+                     filterByQuantile=TRUE, feature.exclude = "^AFFX")
+```
+```{r FilterResults1, results='hide', echo=FALSE}
+names(filtered)
+class(filtered$eset)
+```
+```{r FilterResults2,echo=FALSE,eval=TRUE}
+print(filtered$filter.log)
+eset_filtered <-filtered$eset
+```
+```{r SaveData1, results='hide', message=FALSE}
+write.csv(exprs(eset_rma), file="./results/normalized.Data.csv")
+write.csv(exprs(eset_filtered), file="./results/normalized.Filtered.Data.csv")
+save(eset_rma, eset_filtered, file="./results/normalized.Data.Rda")
+```
+```{r DesignMatrix, message=FALSE,echo=FALSE,eval=TRUE}
+library(limma)
+designMat<- model.matrix(~0+Group, pData(eset_filtered))
+colnames(designMat) <- c("Cav.TGFB1", "Cav.Ctrl", "Con.TGFB1", "Con.Ctrl")
+print(designMat)
+```
+```{r setContrasts,echo=FALSE,eval=TRUE}
+
+cont.matrix <- makeContrasts (CAV = Cav.TGFB1-Cav.Ctrl,
+                              CON = Con.TGFB1-Con.Ctrl,
+                              INT = (Cav.TGFB1-Cav.Ctrl) - (Con.TGFB1-Con.Ctrl),
+                              levels=designMat)
+print(cont.matrix)
+```
+```{r, linearmodelfit,echo=FALSE,eval=TRUE}
+require(limma)
+fit<-lmFit(eset_filtered, designMat)
+fit.main<-contrasts.fit(fit, cont.matrix)
+fit.main<-eBayes(fit.main)
+class(fit.main)
+results<-decideTests(fit.main)
+
+class(fit.main)
+```
+```{r, topTabs1,echo=FALSE,eval=TRUE}
+topTab_CAV<- topTable (fit.main, number=nrow(fit.main), coef="CAV", adjust="fdr") 
+head(topTab_CAV)
+```
+
+```{r, topTabs2,echo=FALSE,eval=TRUE}
+topTab_CON <- topTable (fit.main, number=nrow(fit.main), coef="CON", adjust="fdr") 
+head(topTab_CON)
+```
+
+```{r, topTabs3,echo=FALSE,eval=TRUE}
+topTab_INT  <- topTable (fit.main, number=nrow(fit.main), coef="INT", adjust="fdr") 
+head(topTab_INT)
+```
+
+```{r GeneAnnotation, message=FALSE, warning=FALSE,echo=FALSE,eval=TRUE}
+annotatedTopTable <- function(topTab, anotPackage)
+{
+  topTab <- cbind(PROBEID=rownames(topTab), topTab)
+  myProbes <- rownames(topTab)
+  thePackage <- eval(parse(text = anotPackage))
+  geneAnots <- select(thePackage, myProbes, c("SYMBOL", "ENTREZID", "GENENAME"))
+  annotatedTopTab<- merge(x=geneAnots, y=topTab, by.x="PROBEID", by.y="PROBEID")
+return(annotatedTopTab)
+}
+```
+
+```{r annotateTopTables}
+topAnnotated_CAV <- annotatedTopTable(topTab_CAV,
+anotPackage="mogene10sttranscriptcluster.db")
+topAnnotated_CON <- annotatedTopTable(topTab_CON,
+anotPackage="mogene10sttranscriptcluster.db")
+topAnnotated_INT <- annotatedTopTable(topTab_INT,
+anotPackage="mogene10sttranscriptcluster.db")
+write.csv(topAnnotated_CAV, file="./results/topAnnotated_CAV.csv")
+write.csv(topAnnotated_CON, file="./results/topAnnotated_CON.csv")
+write.csv(topAnnotated_INT, file="./results/topAnnotated_INT.csv")
+```
+```{r volcanoPlot,echo=FALSE,eval=TRUE, fig.cap="Figura 11.Volcano plot para la comparación entre hepatocitos cav incubados con TGFbeta1 y sin TGFbeta1"}
+require(mogene10sttranscriptcluster.db)
+geneSymbols <- select(mogene10sttranscriptcluster.db, rownames(fit.main), c("SYMBOL"))
+SYMBOLS<- geneSymbols$SYMBOL
+volcanoplot(fit.main, coef=1, highlight=4, names=SYMBOLS, 
+            main=paste("Genes expresados diferencialmente", colnames(cont.matrix)[1], sep="\n"))
+  abline(v=c(-1,1))
+```
+```{r volcanoPlot2, echo=FALSE,eval=TRUE,fig.cap="Figura 12.Volcano plot para la comparación entre hepatocitos CON incubados con TGFbeta1 y sin TGFbeta1"}
+require(mogene10sttranscriptcluster.db)
+geneSymbols <- select(mogene10sttranscriptcluster.db, rownames(fit.main), c("SYMBOL"))
+SYMBOLS<- geneSymbols$SYMBOL
+volcanoplot(fit.main, coef=2, highlight=4, names=SYMBOLS, 
+            main=paste("Genes expresados diferencialmente", colnames(cont.matrix)[2], sep="\n"))
+  abline(v=c(-1,1))
+```
+```{r volcanoPlot3,echo=FALSE,eval=TRUE,fig.cap="Figura 13.Volcano plot para la comparación entre hepatocitos CAV Y CON"}
+require(mogene10sttranscriptcluster.db)
+geneSymbols <- select(mogene10sttranscriptcluster.db, rownames(fit.main), c("SYMBOL"))
+SYMBOLS<- geneSymbols$SYMBOL
+volcanoplot(fit.main, coef=3, highlight=4, names=SYMBOLS, 
+            main=paste("Genes expresados diferencialmente", colnames(cont.matrix)[3], sep="\n"))
+  abline(v=c(-1,1))
+```
+```{r decideTests.1,echo=FALSE,eval=TRUE}
+require(limma)
+res<-decideTests(fit.main, method="separate", adjust.method="fdr", p.value=0.1, lfc=1)
+```
+```{r resumeDecideTests,echo=FALSE,eval=TRUE}
+sum.res.rows<-apply(abs(res),1,sum)
+res.selected<-res[sum.res.rows!=0,] 
+print(summary(res))
+```
+```{r, vennDiagram, fig.cap="Figura 14.Diagrama de Venn donde se muestran los genes en comun entre las tres comparaciones"}
+vennDiagram (res.selected[,1:3], cex=0.9)
+title("Genes in common between the three comparisons\n Genes selected with FDR < 0.1 and logFC > 1")
+```
+```{r data4Heatmap, echo=FALSE,eval=TRUE, fig.align="center"}
+probesInHeatmap <- rownames(res.selected)
+HMdata <- exprs(eset_filtered)[rownames(exprs(eset_filtered)) %in% probesInHeatmap,]
+geneSymbols <- select(mogene10sttranscriptcluster.db, rownames(HMdata), c("SYMBOL"))
+SYMBOLS<- geneSymbols$SYMBOL
+rownames(HMdata) <- SYMBOLS
+write.csv(HMdata, file = file.path("./results/heatmap.csv"))
+```
+
+```{r heatmapNoclustering, echo=FALSE, eval=TRUE,fig.align="center", fig.cap= "Figura 15.Heatmap de expresión sin agrupación"}
+my_palette <- colorRampPalette(c("blue", "red"))(n=299)
+require(gplots)
+heatmap.2(HMdata,
+Rowv = FALSE,
+Colv = FALSE,
+main = "Genes diferencialmente expresados \n FDR < 0,1, logFC >=1",
+scale = "row",
+col = my_palette,
+sepcolor = "white",
+sepwidth = c(0.05,0.05),
+cexRow = 0.5,
+cexCol = 0.9,
+key = TRUE,
+keysize = 1.5,
+density.info = "histogram",
+ColSideColors = c(rep("red",3),rep("blue",3), rep("green",3), rep("yellow",3)),
+tracecol = NULL,
+dendrogram = "none",
+srtCol = 30)
+```
+
+```{r heatmapClustering,echo=FALSE,eval=TRUE, fig.align="center", fig.cap= "Figura 16.Heatmap de expresión agrupando genes (filas y muestras (columnas) por similaridad"}
+heatmap.2(HMdata,
+Rowv = TRUE,
+Colv = TRUE,
+dendrogram = "both",
+main = "Differentially expressed genes \n FDR < 0,1, logFC >=1",
+scale = "row",
+col = my_palette,
+sepcolor = "white",
+sepwidth = c(0.05,0.05),
+cexRow = 0.5,
+cexCol = 0.9,
+key = TRUE,
+keysize = 1.5,
+density.info = "histogram",
+ColSideColors = c(rep("red",3),rep("blue",3), rep("green",3), rep("yellow",3)),
+tracecol = NULL,
+srtCol = 30)
+```
+
+```{r, echo=FALSE,eval=TRUE, results='hide'}
+tiff("figures/Heatmap1.tiff", res = 150, width = 5.5, height = 5.5, units = 'in')
+heatmap.2(HMdata,
+Rowv = TRUE,
+Colv = TRUE,
+main = "Differentially expressed genes \n FDR < 0,1, logFC >=1",
+scale = "row",
+col = my_palette,
+sepcolor = "white",
+sepwidth = c(0.05,0.05),
+cexRow = 0.5,
+cexCol = 0.9,
+key = TRUE,
+keysize = 1.5,
+density.info = "histogram",
+ColSideColors = c(rep("red",3),rep("blue",3), rep("green",3), rep("yellow",3)),
+tracecol = NULL,
+dendrogram = "both",
+srtCol = 30)
+dev.off()
+tiff("figures/Heatmap2.tiff", res = 150, width = 5.5, height = 5.5, units = 'in')
+heatmap.2(HMdata,
+Rowv = FALSE,
+Colv = FALSE,
+dendrogram = "none",
+main = "Differentially expressed genes \n FDR < 0,1, logFC >=1",
+scale = "row",
+col = my_palette,
+sepcolor = "white",
+sepwidth = c(0.05,0.05),
+cexRow = 0.5,
+cexCol = 0.9,
+key = TRUE,
+keysize = 1.5,
+density.info = "histogram",
+ColSideColors = c(rep("red",3),rep("blue",3), rep("green",3), rep("yellow",3)),
+tracecol = NULL,
+srtCol = 30)
+dev.off()
+```
+```{r selectGenes,echo=FALSE,eval=TRUE}
+listOfTables <- list(CAV = topTab_CAV, 
+                     CON = topTab_CON, 
+                     INT = topTab_INT)
+listOfSelected <- list()
+for (i in 1:length(listOfTables)){
+  # select the toptable
+  topTab <- listOfTables[[i]]
+  # select the genes to be included in the analysis
+  whichGenes<-topTab["adj.P.Val"]<0.15
+  selectedIDs <- rownames(topTab)[whichGenes]
+  # convert the ID to Entrez
+  EntrezIDs<- select(mogene10sttranscriptcluster.db, selectedIDs, c("ENTREZID"))
+  EntrezIDs <- EntrezIDs$ENTREZID
+  listOfSelected[[i]] <- EntrezIDs
+  names(listOfSelected)[i] <- names(listOfTables)[i]
+}
+sapply(listOfSelected, length)
+```
+
+```{r identificadores}
+mapped_genes2GO <- mappedkeys(org.Mm.egGO)
+mapped_genes2KEGG <- mappedkeys(org.Mm.egPATH)
+mapped_genes <- union(mapped_genes2GO , mapped_genes2KEGG)
+```
+
+```{r BiologicalSig,echo=FALSE,eval=TRUE}
+library(ReactomePA)
+listOfData <- listOfSelected[1:2]
+comparisonsNames <- names(listOfData)
+universe <- mapped_genes
+for (i in 1:length(listOfData)){
+  genesIn <- listOfData[[i]]
+  comparison <- comparisonsNames[i]
+  enrich.result <- enrichPathway(gene = genesIn,
+                                 pvalueCutoff = 0.05,
+                                 readable = T,
+                                 pAdjustMethod = "BH",
+                                 organism = "mouse",
+                                 universe = universe)
+  
+  cat("##################################")
+  cat("\nComparison: ", comparison,"\n")
+  print(head(enrich.result))
+  if (length(rownames(enrich.result@result)) != 0) {
+  write.csv(as.data.frame(enrich.result), 
+             file =paste0("./results/","ReactomePA.Results.",comparison,".csv"), 
+             row.names = FALSE)
+  
+  pdf(file=paste0("./results/","ReactomePABarplot.",comparison,".pdf"))
+    print(barplot(enrich.result, showCategory = 15, font.size = 4, 
+            title = paste0("Reactome Pathway Analisis para ", comparison,". Barplot")))
+  dev.off()
+  
+  pdf(file = paste0("./results/","ReactomePAcnetplot.",comparison,".pdf"))
+    print(cnetplot(enrich.result, categorySize = "geneNum", schowCategory = 15, 
+         vertex.label.cex = 0.75))
+  dev.off()
+  }
+}
+```
+
+```{r BarplotCAV, echo=FALSE,eval=TRUE, fig.align="center",out.width="75%%", fig.cap="Figura 17.Barplot de los hepatocitos con caveolina"}
+knitr::include_graphics("figures/BArplotCAV.PNG.jpg")
+```
+
+```{r BarplotCON, echo=FALSE,eval=TRUE, fig.align="center", out.width="75%%",fig.cap="Figura 18.Barplot de expresión génica de los hepatocitos sin caveolina"}
+knitr::include_graphics("figures/BarplotCON.png.jpg")
+```
+
+```{r CNETplotCAV, echo=FALSE,eval=TRUE, fig.align="center",out.width="75%", fig.cap="Figura 19.CNETplot de los hepatocitos con caveolina"}
+knitr::include_graphics("figures/CNETcav.jpg")
+```
+
+```{r CNETplotCON, echo=FALSE,eval=TRUE, fig.align="center",out.width="75%", fig.cap="Figura 20.CNETplot de expresión génica de los hepatocitos sin caveolina"}
+knitr::include_graphics("figures/CNETcon.jpg")
+```
+
+```{r summary, echo=FALSE, fig.cap="Figura 21. Red de los 20 términos GO más relevantes para CAV", fig.align="center"}
+library(enrichplot)
+emapplot(enrich.result,pie="count", pie_scale=1.5, layout="nicely",color = "p.adjust",showCategory = 20)
+png(filename = "./figures/enrichplotCAV.png")
+```
+```{r summary2, echo=FALSE}
+Tab.react1 <- read.csv2(file.path("./results/ReactomePA.Results.CAV.csv"),
+sep = ",", header = TRUE, row.names = 1)
+Tab.react1 <- Tab.react1[1:5, 1:5]
+knitr::kable(Tab.react1, booktabs = TRUE, caption = "Primeras filas y columnas para la comparacion CAV")
+```
+```{r summary3, echo=FALSE}
+Tab.react2 <- read.csv2(file.path("./results/ReactomePA.Results.CON.csv"),
+sep = ",", header = TRUE, row.names = 1)
+Tab.react2 <- Tab.react2[1:5, 1:5]
+knitr::kable(Tab.react2, booktabs = TRUE, caption = "Primeras filas y columnas para la comparacion CON")
+```
+
+
+
+
+
+
