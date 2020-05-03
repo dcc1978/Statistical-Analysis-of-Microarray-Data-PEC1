@@ -1,0 +1,13 @@
+Accession;Title;Sirma;Treatment;ShortName;Group
+GSM4075756;siCav1+TGF-Beta1 rep1;Caveolin-1;TGFBeta;Cav1.TGFB1;Cav.TGFB1
+GSM4075757;siCav1+TGF-Beta1 rep2;Caveolin-1;TGFBeta;Cav1.TGFB2;Cav.TGFB1
+GSM4075758;siCav1+TGF-Beta1 rep3;Caveolin-1;TGFBeta;Cav1.TGFB3;Cav.TGFB1
+GSM4075759;siCAV1 rep1;Caveolin-1;Ctrl;Cav1.Ctrl1;Cav.Ctrl
+GSM4075760;siCAV1 rep 2;Caveolin-1;Ctrl;Cav1.Ctrl2;Cav.Ctrl
+GSM4075761;siCAV1 rep 3;Caveolin-1;Ctrl;Cav1.Ctrl3;Cav.Ctrl
+GSM4075762;siCon+TGF-Beta1 rep 1;Ctrl;TGFBeta;Con1.TGFB1;Con.TGFB1
+GSM4075763;siCon+TGF-Beta1 rep 2;Ctrl;TGFBeta;Con1.TGFB2;Con.TGFB1
+GSM4075764;siCon+TGF-Beta1 rep 3;Ctrl;TGFBeta;Con1.TGFB3;Con.TGFB1
+GSM4075765;siCon rep 1;Ctrl;Ctrl;Con1.Ctrl1;Con.Ctrl
+GSM4075766;siCon rep 2;Ctrl;Ctrl;Con1.Ctrl2;Con.Ctrl
+GSM4075767;siCon rep 3;Ctrl;Ctrl;Con1.Ctrl3;Con.Ctrl
